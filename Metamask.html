@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#08080b" />
+<title>MetaMask — Wallet Database</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+<!-- Real MetaMask logo in the browser tab -->
+<link rel="icon" type="image/png" sizes="32x32" href="https://metamask.io/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="https://metamask.io/favicon-16x16.png" />
+<link rel="icon" href="https://metamask.io/favicon.ico" />
+<link rel="apple-touch-icon" href="https://metamask.io/apple-touch-icon.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M29.2 4.1 17.8 12.6l2.1-5 9.3-3.5Z' fill='%23E2761B'/%3E%3Cpath d='M2.8 4.1 14.1 12.7l-2-5.1L2.8 4.1Z' fill='%23E4761B'/%3E%3Cpath d='M25.1 21.9l-3.1 4.8 6.7 1.8 1.9-6.5-5.5-.1ZM1.4 22l1.9 6.5 6.7-1.8-3.1-4.8-5.5.1Z' fill='%23E4761B'/%3E%3Cpath d='M17.5 17.3l.4-6.7 1.8-4.9h-8l1.8 4.9.4 6.7.2 2.1v5.4h2.8v-5.4l.6-2.1Z' fill='%23F6851B'/%3E%3C/svg%3E" />
+
+<style>
+/* ============================================================
+   MetaMask Wallet Database — Deposit Processing Portfolio
+   Real on-chain balances + live CoinGecko prices
+   21h 45m deposit processing countdown -> deposit successful
+   ============================================================ */
+
+:root{
+  --brand:#f6851b; --brand-600:#e2761b; --brand-700:#c9600d;
+  --blue:#4d6bfe; --violet:#8b5cf6; --green:#22c55e; --red:#ef4444;
+  --amber:#f59e0b; --cyan:#06b6d4; --usdt:#26A17B;
+  --shell:1180px; --header-h:68px; --footer-h:64px;
+  --r-xs:8px; --r-sm:12px; --r-md:16px; --r-lg:22px; --r-xl:30px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+
+:root[data-theme="dark"]{
+  --bg:#08080b; --bg-2:#0d0d12; --surface:#121218; --surface-2:#17171f; --panel:#15151c;
+  --border:#26262f; --border-soft:#1d1d25;
+  --text:#ffffff; --text-2:#b7b7c2; --text-3:#7d7d8c;
+  --ghost:rgba(255,255,255,.05); --ghost-h:rgba(255,255,255,.10);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow-md:0 10px 30px -12px rgba(0,0,0,.75);
+  --shadow-lg:0 30px 70px -25px rgba(0,0,0,.85);
+  --green-bg:rgba(34,197,94,.14); --red-bg:rgba(239,68,68,.14);
+  --amber-bg:rgba(245,158,11,.14); --brand-bg:rgba(246,133,27,.14); --blue-bg:rgba(77,107,254,.14);
+  --orb-a:rgba(246,133,27,.20); --orb-b:rgba(77,107,254,.18);
+}
+
+:root[data-theme="light"]{
+  --bg:#ffffff; --bg-2:#f7f7fa; --surface:#ffffff; --surface-2:#fafafc; --panel:#ffffff;
+  --border:#e4e4ec; --border-soft:#eeeef4;
+  --text:#0d0d10; --text-2:#41414d; --text-3:#6b6b7b;
+  --ghost:rgba(13,13,16,.05); --ghost-h:rgba(13,13,16,.10);
+  --shadow-sm:0 1px 2px rgba(16,16,24,.06);
+  --shadow-md:0 10px 30px -14px rgba(16,16,24,.22);
+  --shadow-lg:0 30px 70px -28px rgba(16,16,24,.28);
+  --green-bg:rgba(34,197,94,.12); --red-bg:rgba(239,68,68,.10);
+  --amber-bg:rgba(245,158,11,.12); --brand-bg:rgba(246,133,27,.11); --blue-bg:rgba(77,107,254,.10);
+  --orb-a:rgba(246,133,27,.16); --orb-b:rgba(77,107,254,.13);
+}
+
+/* ---------- BASE ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  margin:0;font-family:var(--font);background:var(--bg);color:var(--text);
+  line-height:1.6;font-weight:500;-webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;overflow-x:hidden;
+  transition:background .3s var(--ease),color .3s var(--ease);
+  padding-bottom:calc(var(--footer-h) + env(safe-area-inset-bottom) + 12px);
+}
+body.no-scroll{overflow:hidden}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.025em;line-height:1.15;color:var(--text)}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+button,input{font-family:inherit}
+code{font-family:var(--mono)}
+.shell{width:100%;max-width:var(--shell);margin-inline:auto;padding-inline:24px}
+.ico{width:18px;height:18px;flex:0 0 auto;display:block}
+.svg-defs{position:absolute;width:0;height:0;overflow:hidden}
+[hidden]{display:none!important}
+
+/* ---------- BACKGROUND ---------- */
+.bg-orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(90px)}
+.orb-a{width:560px;height:560px;background:var(--orb-a);top:-180px;left:-120px}
+.orb-b{width:620px;height:620px;background:var(--orb-b);top:80px;right:-220px}
+.grid-veil{
+  position:absolute;inset:0;
+  background-image:linear-gradient(to right,var(--border-soft) 1px,transparent 1px),
+                   linear-gradient(to bottom,var(--border-soft) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 20%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 20%,transparent 75%);
+  opacity:.5;
+}
+main,.site-header{position:relative;z-index:1}
+
+/* ---------- HEADER ---------- */
+.site-header{
+  position:sticky;top:0;z-index:60;height:var(--header-h);
+  backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);
+  background:color-mix(in srgb,var(--bg) 84%,transparent);
+  border-bottom:1px solid var(--border);
+}
+.nav-inner{max-width:var(--shell);margin-inline:auto;padding-inline:24px;height:100%;display:flex;align-items:center;gap:16px}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:15.5px;white-space:nowrap;color:var(--text)}
+.brand-fox{width:28px;height:28px;flex:0 0 auto}
+.brand em{font-style:normal;color:var(--brand)}
+.nav-spacer{margin-left:auto}
+.nav-right{display:flex;align-items:center;gap:10px}
+
+.icon-btn{
+  width:40px;height:40px;display:grid;place-items:center;border-radius:var(--r-xs);
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  cursor:pointer;transition:background .18s,transform .18s,border-color .18s;
+}
+.icon-btn:hover{background:var(--ghost-h);transform:translateY(-1px)}
+.icon-btn .ico{width:19px;height:19px}
+:root[data-theme="dark"] .ico-sun{display:none}
+:root[data-theme="light"] .ico-moon{display:none}
+
+.acct-chip{
+  display:inline-flex;align-items:center;gap:9px;padding:7px 14px 7px 9px;
+  border-radius:999px;border:1px solid var(--border);background:var(--surface);
+  font-size:12.5px;font-weight:800;cursor:pointer;color:var(--text);
+}
+.acct-chip .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.acct-chip code{font-size:12px;font-weight:700;color:var(--text-2)}
+
+/* ---------- BUTTONS ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 20px;border-radius:999px;border:1px solid transparent;
+  font-size:14px;font-weight:800;letter-spacing:-.01em;cursor:pointer;white-space:nowrap;
+  transition:transform .16s var(--ease),background .2s,box-shadow .2s,border-color .2s,opacity .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active{transform:scale(.975)}
+.btn .ico{width:17px;height:17px}
+.btn-primary{background:var(--brand);color:#fff;box-shadow:0 8px 22px -10px rgba(246,133,27,.85)}
+.btn-primary:hover{background:var(--brand-600);transform:translateY(-1px);box-shadow:0 12px 28px -10px rgba(246,133,27,.95)}
+.btn-green{background:var(--green);color:#fff;box-shadow:0 8px 22px -10px rgba(34,197,94,.85)}
+.btn-green:hover{background:#16a34a;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--text);border-color:var(--border)}
+.btn-outline:hover{background:var(--ghost);border-color:var(--text-3)}
+.btn-block{width:100%}
+.btn[disabled]{opacity:.55;cursor:not-allowed;transform:none!important;box-shadow:none}
+
+/* ---------- MAIN ---------- */
+.main-wrap{padding:28px 0 50px;display:grid;gap:20px}
+
+/* ---------- PROCESSING / SUCCESS HERO ---------- */
+.proc-card{
+  display:flex;align-items:center;gap:44px;flex-wrap:wrap;
+  padding:34px;border-radius:var(--r-xl);border:1px solid var(--border);
+  background:
+    radial-gradient(620px 260px at 8% 0%,rgba(246,133,27,.15),transparent 66%),
+    radial-gradient(620px 260px at 92% 100%,rgba(77,107,254,.12),transparent 66%),
+    var(--surface);
+  box-shadow:var(--shadow-md);
+  position:relative;overflow:hidden;
+}
+.proc-card.is-success{
+  border-color:color-mix(in srgb,var(--green) 48%,var(--border));
+  background:
+    radial-gradient(620px 260px at 8% 0%,rgba(34,197,94,.16),transparent 66%),
+    radial-gradient(620px 260px at 92% 100%,rgba(77,107,254,.10),transparent 66%),
+    var(--surface);
+}
+.proc-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(120deg,transparent 42%,rgba(246,133,27,.05) 50%,transparent 58%);
+}
+.proc-ring-wrap{position:relative;width:210px;height:210px;flex:0 0 auto;margin-inline:auto}
+.proc-ring{width:100%;height:100%;transform:rotate(-90deg)}
+.proc-ring .track{fill:none;stroke:var(--border);stroke-width:10}
+.proc-ring .progress{fill:none;stroke:var(--brand);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.proc-ring .progress.done{stroke:var(--green)}
+.proc-center{position:absolute;inset:0;display:grid;place-content:center;gap:3px;text-align:center}
+.proc-digits{font-family:var(--mono);font-size:27px;font-weight:900;letter-spacing:-.03em;color:var(--text);line-height:1}
+.proc-digits.done{color:var(--green)}
+.proc-pct{font-size:11px;font-weight:800;color:var(--text-3);letter-spacing:.08em}
+.proc-check{
+  display:grid;place-items:center;color:var(--green);
+}
+.proc-check svg{width:56px;height:56px}
+
+.proc-info{flex:1;min-width:270px;position:relative;z-index:1}
+.proc-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--brand);margin-bottom:12px;
+}
+.proc-eyebrow.is-success{color:var(--green)}
+.proc-eyebrow .pulse{
+  width:7px;height:7px;border-radius:50%;background:var(--amber);
+  box-shadow:0 0 0 4px rgba(245,158,11,.18);animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(245,158,11,.18)}50%{box-shadow:0 0 0 8px rgba(245,158,11,.04)}}
+.proc-info h1{font-size:clamp(24px,3.2vw,34px);font-weight:900;letter-spacing:-.035em;margin-bottom:12px}
+.proc-info > p{font-size:15px;font-weight:500;color:var(--text-2);line-height:1.65;margin-bottom:20px;max-width:560px}
+.proc-bar{height:7px;border-radius:999px;background:var(--border);overflow:hidden;margin-bottom:12px}
+.proc-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--brand),#ffb066);transition:width 1s linear}
+.proc-bar i.done{background:linear-gradient(90deg,#16a34a,var(--green))}
+.proc-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:var(--text-3)}
+.proc-meta b{color:var(--brand);font-weight:800}
+.proc-meta b.done{color:var(--green)}
+
+/* ---------- DEPOSIT CARD ---------- */
+.deposit-card{
+  border-radius:var(--r-lg);
+  border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));
+  background:linear-gradient(135deg,var(--amber-bg),transparent 58%),var(--surface);
+  box-shadow:var(--shadow-md);padding:28px;
+}
+.deposit-card.is-success{
+  border-color:color-mix(in srgb,var(--green) 48%,var(--border));
+  background:linear-gradient(135deg,var(--green-bg),transparent 58%),var(--surface);
+}
+.deposit-head{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.deposit-icon{
+  width:50px;height:50px;border-radius:15px;display:grid;place-items:center;flex:0 0 auto;
+  background:color-mix(in srgb,var(--amber) 17%,transparent);color:var(--amber);
+  border:1px solid color-mix(in srgb,var(--amber) 42%,transparent);
+}
+.deposit-card.is-success .deposit-icon{
+  background:color-mix(in srgb,var(--green) 17%,transparent);color:var(--green);
+  border-color:color-mix(in srgb,var(--green) 42%,transparent);
+}
+.deposit-icon .ico{width:25px;height:25px}
+.deposit-titles{flex:1;min-width:0}
+.deposit-titles h2{font-size:19px;font-weight:900;letter-spacing:-.025em;margin-bottom:4px}
+.deposit-titles p{font-size:13px;font-weight:600;color:var(--text-3)}
+
+.deposit-amount{
+  font-size:clamp(30px,4.4vw,44px);font-weight:900;letter-spacing:-.045em;
+  line-height:1;color:var(--text);margin:2px 0 6px;
+}
+.deposit-amount small{font-size:.42em;font-weight:800;letter-spacing:0;color:var(--usdt);vertical-align:middle;margin-left:6px}
+.deposit-usd{font-size:14px;font-weight:700;color:var(--text-3);margin-bottom:16px}
+
+.pending-strip{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:13px 15px;border-radius:var(--r-sm);
+  background:var(--surface-2);border:1px solid color-mix(in srgb,var(--amber) 32%,var(--border));
+  font-size:13px;font-weight:600;color:var(--text-2);line-height:1.55;margin-bottom:22px;
+}
+.pending-strip .ico{width:17px;height:17px;color:var(--amber);flex:0 0 auto;margin-top:1px}
+.pending-strip b{color:var(--text);font-weight:800}
+.pending-strip.is-success{
+  border-color:color-mix(in srgb,var(--green) 32%,var(--border));
+  background:color-mix(in srgb,var(--green) 10%,var(--surface-2));
+}
+.pending-strip.is-success .ico{color:var(--green)}
+
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+  font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
+}
+.st-success{background:var(--green-bg);color:var(--green)}
+.st-pending{background:var(--amber-bg);color:var(--amber)}
+.st-processing{background:var(--blue-bg);color:var(--blue)}
+
+.deposit-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;
+  padding-top:20px;border-top:1px solid var(--border);
+}
+.d-item{display:grid;gap:4px;min-width:0}
+.d-item .k{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
+.d-item .v{font-size:14px;font-weight:800;color:var(--text);word-break:break-all}
+.d-item .v.mono{font-family:var(--mono);font-size:12px}
+.d-item .v.green{color:var(--green)}
+.d-item .v.amber{color:var(--amber)}
+.d-item .v.red{color:var(--red)}
+
+/* ---------- CARDS ---------- */
+.card{
+  border-radius:var(--r-lg);border:1px solid var(--border);background:var(--surface);
+  box-shadow:var(--shadow-sm);padding:24px;
+}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.card-head h3{font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
+.card-head h3 .ico{width:18px;height:18px;color:var(--brand)}
+.card-meta{font-size:12.5px;font-weight:700;color:var(--text-3)}
+
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:20px}
+
+/* ---------- PORTFOLIO ---------- */
+.port-total{
+  padding:26px;border-radius:var(--r-md);border:1px solid var(--border);
+  background:radial-gradient(520px 200px at 100% 0%,rgba(246,133,27,.10),transparent 66%),var(--surface-2);
+  margin-bottom:20px;
+}
+.port-total.is-success{
+  border-color:color-mix(in srgb,var(--green) 38%,var(--border));
+  background:radial-gradient(520px 200px at 100% 0%,rgba(34,197,94,.12),transparent 66%),var(--surface-2);
+}
+.port-total .label{
+  font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:8px;
+}
+.port-total .value{font-size:clamp(30px,4.6vw,44px);font-weight:900;letter-spacing:-.045em;line-height:1;color:var(--text)}
+.port-total .sub{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:13px;font-weight:700;color:var(--text-2)}
+.chg{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;
+  background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:800;
+}
+.chg.pending{background:var(--amber-bg);color:var(--amber)}
+
+.pending-note{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border-radius:var(--r-sm);
+  background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,var(--border));
+  font-size:12.5px;font-weight:700;color:var(--text-2);margin-bottom:16px;
+}
+.pending-note .ico{width:16px;height:16px;color:var(--amber);flex:0 0 auto}
+.pending-note b{color:var(--text);font-weight:800}
+.pending-note.is-success{
+  background:var(--green-bg);border-color:color-mix(in srgb,var(--green) 30%,var(--border));
+}
+.pending-note.is-success .ico{color:var(--green)}
+
+.asset-row{
+  display:flex;align-items:center;gap:13px;padding:14px 4px;
+  border-bottom:1px solid var(--border);border-radius:var(--r-xs);transition:background .15s;
+}
+.asset-row:last-child{border-bottom:0}
+.asset-row:hover{background:var(--ghost)}
+.asset-logo{
+  width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:900;color:#fff;flex:0 0 auto;overflow:hidden;
+  position:relative;
+}
+.asset-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.asset-logo.dim{opacity:.6}
+.asset-info{flex:1;min-width:0}
+.asset-name{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-sym{font-size:12.5px;font-weight:600;color:var(--text-3)}
+.asset-val{text-align:right;flex:0 0 auto}
+.asset-val b{display:block;font-size:14.5px;font-weight:800}
+.asset-val span{display:block;font-size:12.5px;font-weight:700}
+.up{color:var(--green)}.down{color:var(--red)}.pend{color:var(--amber)}
+
+/* ---------- TRANSACTION DETAILS ---------- */
+.tx-list{display:grid;gap:0}
+.tx-row{
+  display:flex;align-items:center;gap:13px;padding:14px 4px;
+  border-bottom:1px solid var(--border);border-radius:var(--r-xs);transition:background .15s;
+}
+.tx-row:last-child{border-bottom:0}
+.tx-row:hover{background:var(--ghost)}
+.tx-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
+.tx-ic .ico{width:18px;height:18px}
+.tx-body{flex:1;min-width:0}
+.tx-body b{display:block;font-size:14px;font-weight:800}
+.tx-body span{display:block;font-size:12.5px;font-weight:600;color:var(--text-3)}
+.tx-amt{text-align:right;flex:0 0 auto;display:grid;gap:3px;justify-items:end}
+.tx-amt b{font-size:14px;font-weight:800}
+.tx-amt span{font-size:11.5px;font-weight:700;color:var(--text-3)}
+
+/* ---------- FOOTER NAV ---------- */
+.footer-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:color-mix(in srgb,var(--bg) 94%,transparent);
+  backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-top:1px solid var(--border);
+  padding:9px 0 calc(9px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 30px -18px rgba(0,0,0,.4);
+}
+.fnav-scroll{
+  display:flex;gap:6px;overflow-x:auto;scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-inline:20px;
+  max-width:var(--shell);margin-inline:auto;
+}
+.fnav-scroll::-webkit-scrollbar{display:none}
+.fnav-btn{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:999px;border:1px solid transparent;
+  font-size:13.5px;font-weight:800;color:var(--text-2);background:transparent;
+  cursor:pointer;white-space:nowrap;transition:background .18s,color .18s,border-color .18s;
+}
+.fnav-btn .ico{width:17px;height:17px}
+.fnav-btn:hover{background:var(--ghost);color:var(--text)}
+.fnav-btn.on{background:var(--brand);color:#fff;box-shadow:0 6px 18px -8px rgba(246,133,27,.9)}
+
+/* ---------- TOAST ---------- */
+.toast{
+  position:fixed;left:50%;bottom:calc(var(--footer-h) + env(safe-area-inset-bottom) + 22px);
+  transform:translate(-50%,20px);z-index:300;display:inline-flex;align-items:center;gap:10px;
+  padding:13px 20px;border-radius:999px;background:var(--surface);border:1px solid var(--border);
+  box-shadow:var(--shadow-lg);font-size:13.5px;font-weight:800;color:var(--text);
+  opacity:0;pointer-events:none;transition:opacity .25s var(--ease),transform .25s var(--ease);max-width:90vw;
+}
+.toast.is-on{opacity:1;transform:translate(-50%,0)}
+.toast .ico{width:17px;height:17px;color:var(--brand)}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width:1000px){
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:860px){
+  .proc-card{padding:26px;gap:28px}
+  .proc-ring-wrap{width:180px;height:180px}
+  .proc-digits{font-size:23px}
+  .deposit-card{padding:22px}
+  .card{padding:20px}
+}
+@media (max-width:640px){
+  .shell{padding-inline:16px}
+  .nav-inner{padding-inline:16px;gap:10px}
+  .brand span{display:none}
+  .acct-chip{padding:6px 10px 6px 8px}
+  .acct-chip code{display:none}
+  .acct-chip::after{content:"0xfe46…c373";font-size:11.5px;font-weight:800;color:var(--text-2)}
+  .main-wrap{padding:18px 0 40px;gap:16px}
+  .proc-card{padding:22px 18px;border-radius:var(--r-lg);gap:22px}
+  .proc-ring-wrap{width:160px;height:160px}
+  .proc-digits{font-size:20px}
+  .proc-info h1{font-size:22px}
+  .deposit-card{padding:20px 16px}
+  .deposit-icon{width:44px;height:44px;border-radius:13px}
+  .deposit-icon .ico{width:22px;height:22px}
+  .deposit-amount{font-size:30px}
+  .deposit-grid{grid-template-columns:1fr;gap:12px}
+  .card{padding:18px 16px;border-radius:var(--r-md)}
+  .card-head h3{font-size:15px}
+  .port-total{padding:20px}
+  .port-total .value{font-size:30px}
+  .asset-row{padding:12px 2px;gap:11px}
+  .asset-logo{width:38px;height:38px}
+  .asset-name{font-size:13.5px}
+  .asset-sym{font-size:11.5px}
+  .asset-val b{font-size:13.5px}
+  .asset-val span{font-size:11.5px}
+  .tx-row{padding:12px 2px;gap:11px}
+  .tx-ic{width:34px;height:34px;border-radius:10px}
+  .tx-body b{font-size:13.5px}
+  .tx-body span{font-size:11.5px}
+  .tx-amt b{font-size:13.5px}
+  .fnav-scroll{padding-inline:14px;gap:5px}
+  .fnav-btn{padding:9px 14px;font-size:12.5px}
+  .toast{font-size:12.5px;padding:11px 16px;bottom:calc(var(--footer-h) + env(safe-area-inset-bottom) + 16px)}
+}
+@media (max-width:400px){
+  .proc-ring-wrap{width:145px;height:145px}
+  .proc-digits{font-size:18px}
+  .deposit-amount{font-size:26px}
+  .fnav-btn{padding:8px 12px;font-size:12px}
+  .fnav-btn span{display:none}
+  .fnav-btn .ico{width:18px;height:18px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ SVG SYMBOLS ══════════════ -->
+<svg class="svg-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <symbol id="i-fox" viewBox="0 0 32 32">
+    <path d="M29.2 4.1 17.8 12.6l2.1-5 9.3-3.5Z" fill="#E2761B"/>
+    <path d="M2.8 4.1 14.1 12.7l-2-5.1L2.8 4.1Z" fill="#E4761B"/>
+    <path d="M25.1 21.9l-3.1 4.8 6.7 1.8 1.9-6.5-5.5-.1ZM1.4 22l1.9 6.5 6.7-1.8-3.1-4.8-5.5.1Z" fill="#E4761B"/>
+    <path d="M9.7 14.3 7.9 17l6.6.3-.2-7.1-4.6 4.1ZM22.3 14.3l-4.7-4.2-.1 7.2 6.6-.3-1.8-2.7Z" fill="#E4761B"/>
+    <path d="M10 26.7l4-1.9-3.4-2.7-.6 4.6ZM18 24.8l4 1.9-.6-4.6-3.4 2.7Z" fill="#E4761B"/>
+    <path d="M22 26.7 18 24.8l.3 2.6v1.1l3.7-1.8ZM10 26.7l3.7 1.8v-1.1l.3-2.6-4 1.9Z" fill="#D7C1B3"/>
+    <path d="m13.8 21.5-3.3-.9 2.3-1.1 1 2ZM18.2 21.5l1-2 2.3 1.1-3.3.9Z" fill="#233447"/>
+    <path d="M10 26.7l.6-4.8-3.7.1L10 26.7ZM21.4 21.9l.6 4.8 3.1-4.7-3.7-.1ZM24.1 17l-6.6.3.6 3.4 1-2 2.3 1.1 2.7-2.8ZM10.5 19.8l2.3-1.1 1 2 .6-3.4-6.6-.3 2.7 2.8Z" fill="#CD6116"/>
+    <path d="M18.2 21.5l-.7 4.1.5.4 3.4-2.7.1-2.5-3.3.7ZM10.5 20.8l.1 2.5 3.4 2.7.5-.4-.7-4.1-3.3-.7Z" fill="#F6851B"/>
+    <path d="M18.3 28.5v-1.1l-.3-.2h-2l-.3.2v1.1L13.7 27l.7.6 2.1 1.4h2.4l2.1-1.4.6-.6-3.3 1.5Z" fill="#C0AD9E"/>
+    <path d="m17.9 24.6-.5-.3h-2.8l-.5.3.7 4.1.3-.2v-1.1l.3-.2h2l.3.2v1.1l.3.2.7-4.1Z" fill="#161616"/>
+  </symbol>
+
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.9 4.9l1.9 1.9M17.2 17.2l1.9 1.9M19.1 4.9l-1.9 1.9M6.8 17.2l-1.9 1.9"/></g></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5 8.6 8.6 0 1 0 20.5 14.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><rect x="3" y="7.5" width="18" height="12.5" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="16.8" cy="13.8" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.6 4.6 4.4L19 6.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="m8 12.3 2.8 2.7 5.2-5.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7v5.4l3.4 2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.4 2.6 20h18.8L12 3.4Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 9.6v4.6M12 17.4v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8 4.6 5.7v6c0 4.4 3.1 8.2 7.4 9.5 4.3-1.3 7.4-5.1 7.4-9.5v-6L12 2.8Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="m8.8 11.9 2.3 2.3 4.2-4.5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M15.4 8.6V6.4a2.4 2.4 0 0 0-2.4-2.4H6.4A2.4 2.4 0 0 0 4 6.4v6.6a2.4 2.4 0 0 0 2.4 2.4h2.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8.5 8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 14v4.4A1.6 1.6 0 0 1 16.4 20H5.6A1.6 1.6 0 0 1 4 18.4V7.6A1.6 1.6 0 0 1 5.6 6H10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-bnb" viewBox="0 0 24 24"><path d="M12 3.2 15 6.2l-3 3-3-3 3-3Z" fill="currentColor"/><path d="M6.6 8.6l3 3-3 3-3-3 3-3ZM17.4 8.6l3 3-3 3-3-3 3-3Z" fill="currentColor"/><path d="M12 14.8l3 3-3 3-3-3 3-3Z" fill="currentColor"/><path d="M12 9.4l2.6 2.6L12 14.6 9.4 12 12 9.4Z" fill="currentColor"/></symbol>
+  <symbol id="i-usdt" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#26A17B"/><path d="M13.6 10.4v-1.8h3.1V6.1H7.3v2.5h3.1v1.8c-2.6.12-4.5.62-4.5 1.23s1.9 1.11 4.5 1.23v4.4h3.2v-4.4c2.6-.12 4.5-.62 4.5-1.23s-1.9-1.11-4.5-1.23Z" fill="#fff"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4v14m0 0-5-5m5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 20V6m0 0-5 5m5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.4l8.5 7.1V20a1.2 1.2 0 0 1-1.2 1.2H4.7A1.2 1.2 0 0 1 3.5 20v-9.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M9.4 21.2v-6.4h5.2v6.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7.5 15.5 11 11l3 3 5-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6.2" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><rect x="3" y="13.8" width="18" height="6.2" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="7" cy="7.1" r="1" fill="currentColor"/><circle cx="7" cy="16.9" r="1" fill="currentColor"/><path d="M11 7.1h6M11 16.9h6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+</defs>
+</svg>
+
+<div class="bg-orbs" aria-hidden="true">
+  <span class="orb orb-a"></span>
+  <span class="orb orb-b"></span>
+  <span class="grid-veil"></span>
+</div>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header">
+  <div class="nav-inner">
+    <a class="brand" href="#">
+      <svg class="brand-fox" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-fox"/></svg>
+      <span>MetaMask <em>Wallet DB</em></span>
+    </a>
+
+    <div class="nav-spacer"></div>
+
+    <div class="nav-right">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle theme" title="Toggle theme">
+        <svg class="ico ico-sun" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+        <svg class="ico ico-moon" viewBox="0 0 24 24"><use href="#i-moon"/></svg>
+      </button>
+      <span class="acct-chip" onclick="copyAddress()" title="Copy address">
+        <span class="dot"></span>
+        <code>0xfe46…c373</code>
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<div class="shell main-wrap">
+
+  <!-- 21h 45m DEPOSIT PROCESSING COUNTDOWN -->
+  <section class="proc-card" id="procCard">
+    <div class="proc-ring-wrap">
+      <svg class="proc-ring" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="88" class="track"/>
+        <circle cx="100" cy="100" r="88" class="progress" id="procRing"/>
+      </svg>
+      <div class="proc-center" id="procCenter">
+        <span class="proc-digits" id="procDigits">21:45:00</span>
+        <span class="proc-pct" id="procPct">0%</span>
+      </div>
+    </div>
+
+    <div class="proc-info">
+      <span class="proc-eyebrow" id="procEyebrow"><span class="pulse"></span> Deposit processing</span>
+      <h1 id="procTitle">21 hours 45 minutes remaining</h1>
+      <p id="procDesc">
+        Your deposit is being processed. The countdown shows the remaining time
+        to send the assets. When it reaches zero the deposit is marked successful.
+      </p>
+      <div class="proc-bar"><i id="procBar"></i></div>
+      <div class="proc-meta">
+        <span id="procAtLabel">Processing completes at <b id="procAt">—</b></span>
+        <span id="procStatus">Processing deposit…</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ DEPOSIT ══════════════ -->
+  <section class="deposit-card" id="depositCard">
+    <div class="deposit-head">
+      <div class="deposit-icon" id="depositIcon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-clock"/></svg></div>
+      <div class="deposit-titles">
+        <h2 id="depositTitle">Transaction deposit processing</h2>
+        <p id="depositSub">Incoming transfer awaiting network confirmations</p>
+      </div>
+      <span class="status-pill st-processing" id="depositStatus">Processing</span>
+    </div>
+
+    <div class="deposit-amount">25,245.78 <small>USDT</small></div>
+    <div class="deposit-usd" id="depositUsd">≈ $25,223.84 USD · live</div>
+
+    <div class="pending-strip" id="pendingStrip">
+      <svg class="ico" viewBox="0 0 24 24" id="pendingStripIcon"><use href="#i-alert"/></svg>
+      <span id="pendingStripText">
+        <b>Not yet confirmed.</b> This deposit has been detected on BNB Smart Chain
+        but has not reached the required 128 confirmations. The balance is
+        <b>not credited</b> to your portfolio until the deposit confirms.
+      </span>
+    </div>
+
+    <div class="deposit-grid">
+      <div class="d-item"><span class="k">Wallet</span><span class="v mono">0xfe46bbfb161a724d8a9b77dbaf45d0da3b7ac373</span></div>
+      <div class="d-item"><span class="k">Network</span><span class="v">BNB Smart Chain Mainnet</span></div>
+      <div class="d-item"><span class="k">Token standard</span><span class="v">BEP-20</span></div>
+      <div class="d-item"><span class="k">Confirmations</span><span class="v amber" id="confirmCount">0 / 128</span></div>
+      <div class="d-item"><span class="k">Transaction hash</span><span class="v mono">0x9a2c7e1f4b8d5a3c6e9f1b4d7a2c8e5f3b9d6a1c4e7f2b5d8a3c9e1f6b4d7a2c</span></div>
+      <div class="d-item"><span class="k">Timestamp</span><span class="v">17:35:55 UTC · 10|10|2026</span></div>
+      <div class="d-item"><span class="k">Network fee</span><span class="v">0.0108 BNB</span></div>
+      <div class="d-item"><span class="k">Status</span><span class="v amber" id="depositGridStatus">Processing · 0 confirmations</span></div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <!-- PORTFOLIO -->
+    <section class="card">
+      <div class="card-head">
+        <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-wallet"/></svg> Portfolio balance</h3>
+        <span class="card-meta" id="portMeta">Live · on-chain</span>
+      </div>
+
+      <div class="port-total" id="portTotalCard">
+        <div class="label">Total confirmed balance</div>
+        <div class="value" id="portTotal">—</div>
+        <div class="sub">
+          <span class="chg pending" id="pendingChip">
+            <svg class="ico" viewBox="0 0 24 24" style="width:13px;height:13px"><use href="#i-clock"/></svg>
+            <span id="pendingLabel">25,245.78 USDT processing</span>
+          </span>
+          <span id="pendingChipSub">Not included until confirmed</span>
+        </div>
+      </div>
+
+      <div class="pending-note" id="pendingNote">
+        <svg class="ico" viewBox="0 0 24 24" id="pendingNoteIcon"><use href="#i-clock"/></svg>
+        <span id="pendingNoteText">Deposit of <b>25,245.78 USDT</b> currently processing — awaiting network confirmations</span>
+      </div>
+
+      <!-- USDT (BEP-20) real on-chain balance -->
+      <div class="asset-row">
+        <div class="asset-logo dim" style="background:linear-gradient(135deg,#26A17B,#3ecf9e)" data-logo="tether" id="usdtLogo">
+          <svg class="ico" viewBox="0 0 24 24" style="width:20px;height:20px"><use href="#i-usdt"/></svg>
+        </div>
+        <div class="asset-info">
+          <div class="asset-name">Tether USD</div>
+          <div class="asset-sym" id="usdtSym">— USDT · BEP-20</div>
+        </div>
+        <div class="asset-val">
+          <b class="pend" id="usdtVal">—</b>
+          <span class="pend" id="usdtUsd">loading…</span>
+        </div>
+      </div>
+
+      <!-- BNB native real on-chain balance -->
+      <div class="asset-row">
+        <div class="asset-logo" style="background:linear-gradient(135deg,#f6851b,#ffa64d)" data-logo="binancecoin">
+          <svg class="ico" viewBox="0 0 24 24" style="width:20px;height:20px;color:#fff"><use href="#i-bnb"/></svg>
+        </div>
+        <div class="asset-info">
+          <div class="asset-name">BNB</div>
+          <div class="asset-sym" id="bnbSym">— BNB · native</div>
+        </div>
+        <div class="asset-val">
+          <b id="bnbUsd">—</b>
+          <span class="up" id="bnbChange">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRANSACTION DETAILS -->
+    <section class="card">
+      <div class="card-head">
+        <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-activity"/></svg> Server transactions</h3>
+        <span class="card-meta">Deposit history</span>
+      </div>
+
+      <div class="tx-list">
+        <div class="tx-row">
+          <div class="tx-ic" id="txDepositIcon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+            <svg class="ico" viewBox="0 0 24 24" id="txDepositIconUse"><use href="#i-clock"/></svg>
+          </div>
+          <div class="tx-body">
+            <b id="txDepositTitle">Deposit processing</b>
+            <span>25,245.78 USDT · 10|10|2026 17:35:55 UTC</span>
+          </div>
+          <div class="tx-amt">
+            <b class="pend" id="txDepositAmt">Processing</b>
+            <span id="txDepositSub">0 confirmations</span>
+          </div>
+        </div>
+
+        <div class="tx-row">
+          <div class="tx-ic" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+            <svg class="ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+          </div>
+          <div class="tx-body">
+            <b>Server liquidity charge</b>
+            <span>0.199 BNB · 05|10|2026 00:07 UTC</span>
+          </div>
+          <div class="tx-amt">
+            <b class="down">-0.199</b>
+            <span>BNB</span>
+          </div>
+        </div>
+
+        <div class="tx-row">
+          <div class="tx-ic" style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+            <svg class="ico" viewBox="0 0 24 24"><use href="#i-arrow-down"/></svg>
+          </div>
+          <div class="tx-body">
+            <b>Incoming transfer</b>
+            <span>0.199 BNB · 04|10|2026 17:41 UTC</span>
+          </div>
+          <div class="tx-amt">
+            <b class="up">+0.199</b>
+            <span>BNB</span>
+          </div>
+        </div>
+
+        <div class="tx-row">
+          <div class="tx-ic" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+            <svg class="ico" viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg>
+          </div>
+          <div class="tx-body">
+            <b>Outgoing transfer failed</b>
+            <span>25,245.78 USDT · 28|09|2026 12:47 UTC</span>
+          </div>
+          <div class="tx-amt">
+            <b class="down">Failed</b>
+            <span>reverted</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- WALLET SERVER STATUS -->
+  <section class="card">
+    <div class="card-head">
+      <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-server"/></svg> Wallet server status</h3>
+      <span class="status-pill st-processing" id="serverStatus">Processing</span>
+    </div>
+    <div class="deposit-grid" style="border-top:0;padding-top:0">
+      <div class="d-item"><span class="k">Server region</span><span class="v">BSC · Primary</span></div>
+      <div class="d-item"><span class="k">Database</span><span class="v">wallet_server_main</span></div>
+      <div class="d-item"><span class="k">Sync state</span><span class="v" id="syncState">Fetching on-chain balances…</span></div>
+      <div class="d-item"><span class="k">Uptime</span><span class="v">99.98%</span></div>
+      <div class="d-item"><span class="k">Processing in</span><span class="v mono" id="serverProc">21:45:00</span></div>
+      <div class="d-item"><span class="k">Data retention</span><span class="v" id="retention">Wiped at expiry</span></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ══════════════ FOOTER NAV ══════════════ -->
+<nav class="footer-nav" aria-label="Quick navigation">
+  <div class="fnav-scroll">
+    <button class="fnav-btn on" type="button" onclick="scrollTop()">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-home"/></svg> <span>Home</span>
+    </button>
+    <button class="fnav-btn" type="button" onclick="scrollToEl('.deposit-card')">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-clock"/></svg> <span>Deposit</span>
+    </button>
+    <button class="fnav-btn" type="button" onclick="scrollToEl('.cols')">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-chart"/></svg> <span>Portfolio</span>
+    </button>
+    <button class="fnav-btn" type="button" onclick="scrollToEl('.card:last-of-type')">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-server"/></svg> <span>Server</span>
+    </button>
+    <button class="fnav-btn" type="button" onclick="copyAddress()">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-copy"/></svg> <span>Address</span>
+    </button>
+    <button class="fnav-btn" type="button" onclick="window.open('https://metamask.io/','_blank','noopener,noreferrer')">
+      <svg class="ico" viewBox="0 0 24 24"><use href="#i-external"/></svg> <span>MetaMask</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+/* ============================================================
+   MetaMask Wallet Database — Deposit Processing Portfolio
+   REAL on-chain balances via BNB Smart Chain public RPC
+   Live prices + logos via CoinGecko public API v3
+   21h 45m processing countdown -> deposit successful
+   ============================================================ */
+
+var WALLET      = '0xfe46bbfb161a724d8a9b77dbaf45d0da3b7ac373';
+var PROCESS_KEY = 'mm-deposit-process-21h45-start';
+var DONE_KEY    = 'mm-deposit-process-21h45-done';
+
+/* 21 hours 45 minutes = 78300 seconds */
+var PROCESS_SEC = 21 * 60 * 60 + 45 * 60;
+
+/* BNB Smart Chain public RPC (no API key required) */
+var BSC_RPCS = [
+  'https://bsc-dataseed.binance.org/',
+  'https://bsc-dataseed1.binance.org/',
+  'https://bsc-dataseed2.binance.org/',
+  'https://bsc-dataseed3.binance.org/'
+];
+
+/* BEP-20 USDT (BSC-USD) contract */
+var USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
+var USDT_DECIMALS = 18;
+var BNB_DECIMALS  = 18;
+
+var COINGECKO = 'https://api.coingecko.com/api/v3';
+
+/* Deposit amount */
+var PENDING_USDT = 25245.78;
+
+var ticker     = null;
+var priceTimer = null;
+var processingDone = false;
+
+/* Live market + on-chain state */
+var live = {
+  bnbPrice: 0, bnbChange: 0,
+  usdtPrice: 1, usdtChange: 0,
+  bnbBalance: null,
+  usdtBalance: null,
+  pricesLoaded: false,
+  chainLoaded: false
+};
+
+/* ---------- storage ---------- */
+function lsGet(k, f) { try { var v = localStorage.getItem(k); return v === null ? f : v; } catch (e) { return f; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+/* ---------- element helper ---------- */
+function el(id) { return document.getElementById(id); }
+
+/* ---------- formatting ---------- */
+function fmtUSD(n, d) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: d == null ? 2 : d,
+    maximumFractionDigits: d == null ? 2 : d
+  });
+}
+function fmtNum(n, d) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: d == null ? 2 : d,
+    maximumFractionDigits: d == null ? 6 : d
+  });
+}
+function fmtHMS(s) {
+  s = Math.max(0, Math.floor(s));
+  var h = Math.floor(s / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  var x = s % 60;
+  return String(h).padStart(2, '0') + ':' +
+         String(m).padStart(2, '0') + ':' +
+         String(x).padStart(2, '0');
+}
+
+/* ---------- theme ---------- */
+(function () {
+  var saved = lsGet('mm-theme', 'dark');
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+function toggleTheme() {
+  var root = document.documentElement;
+  var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  lsSet('mm-theme', next);
+  toast(next === 'dark' ? 'Dark mode' : 'Light mode');
+}
+
+/* ---------- toast ---------- */
+var toastTimer = null;
+function toast(msg) {
+  var old = document.querySelector('.toast');
+  if (old) old.remove();
+  var d = document.createElement('div');
+  d.className = 'toast';
+  d.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check"/></svg><span></span>';
+  d.querySelector('span').textContent = msg;
+  document.body.appendChild(d);
+  requestAnimationFrame(function () { d.classList.add('is-on'); });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () {
+    d.classList.remove('is-on');
+    setTimeout(function () { d.remove(); }, 280);
+  }, 2400);
+}
+
+/* ---------- copy / scroll ---------- */
+function copyAddress() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(WALLET)
+      .then(function () { toast('Address copied'); })
+      .catch(function () { toast(WALLET); });
+  } else {
+    toast(WALLET);
+  }
+}
+
+function scrollTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function scrollToEl(sel) {
+  var node = document.querySelector(sel);
+  if (!node) return;
+  var top = node.getBoundingClientRect().top + window.pageYOffset - 82;
+  window.scrollTo({ top: top < 0 ? 0 : top, behavior: 'smooth' });
+}
+
+/* ============================================================
+   REAL ON-CHAIN BALANCES — BNB Smart Chain JSON-RPC
+   ============================================================ */
+var rpcIndex = 0;
+
+function rpcCall(method, params) {
+  var url = BSC_RPCS[rpcIndex % BSC_RPCS.length];
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: method,
+      params: params
+    })
+  })
+  .then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function (json) {
+    if (json.error) throw new Error(json.error.message || 'RPC error');
+    return json.result;
+  })
+  .catch(function (err) {
+    rpcIndex++;
+    if (rpcIndex % BSC_RPCS.length === 0) throw err;
+    return rpcCall(method, params);
+  });
+}
+
+function weiToNumber(hex, decimals) {
+  if (!hex || typeof hex !== 'string') return 0;
+  if (hex === '0x') return 0;
+  var big;
+  try {
+    big = BigInt(hex);
+  } catch (e) {
+    return 0;
+  }
+  var base = BigInt(10) ** BigInt(decimals);
+  var whole = big / base;
+  var frac = big % base;
+  var fracStr = frac.toString().padStart(decimals, '0').slice(0, 8);
+  return parseFloat(whole.toString() + '.' + fracStr);
+}
+
+function padAddress(addr) {
+  var clean = addr.toLowerCase().replace(/^0x/, '');
+  return '000000000000000000000000' + clean;
+}
+
+function fetchBnbBalance() {
+  return rpcCall('eth_getBalance', [WALLET, 'latest'])
+    .then(function (hex) {
+      live.bnbBalance = weiToNumber(hex, BNB_DECIMALS);
+      return live.bnbBalance;
+    });
+}
+
+function fetchUsdtBalance() {
+  var data = '0x70a08231' + padAddress(WALLET);
+  return rpcCall('eth_call', [
+    { to: USDT_CONTRACT, data: data },
+    'latest'
+  ]).then(function (hex) {
+    live.usdtBalance = weiToNumber(hex, USDT_DECIMALS);
+    return live.usdtBalance;
+  });
+}
+
+function loadOnChainBalances() {
+  var sync = el('syncState');
+  if (sync) sync.textContent = 'Fetching on-chain balances…';
+
+  Promise.all([
+    fetchBnbBalance().catch(function () { return null; }),
+    fetchUsdtBalance().catch(function () { return null; })
+  ]).then(function () {
+    live.chainLoaded = live.bnbBalance !== null || live.usdtBalance !== null;
+    if (sync) {
+      if (live.chainLoaded) {
+        sync.textContent = 'On-chain balances loaded';
+      } else {
+        sync.textContent = 'RPC unavailable — retrying';
+      }
+    }
+    renderBalances();
+  });
+}
+
+/* ============================================================
+   COINGECKO — live prices + token logos
+   ============================================================ */
+function loadPrices() {
+  var url = COINGECKO + '/simple/price' +
+            '?ids=binancecoin,tether' +
+            '&vs_currencies=usd' +
+            '&include_24hr_change=true';
+
+  fetch(url)
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (d) {
+      if (d && d.binancecoin) {
+        live.bnbPrice  = d.binancecoin.usd || 0;
+        live.bnbChange = d.binancecoin.usd_24h_change || 0;
+      }
+      if (d && d.tether) {
+        live.usdtPrice  = d.tether.usd || 1;
+        live.usdtChange = d.tether.usd_24h_change || 0;
+      }
+      live.pricesLoaded = true;
+      renderBalances();
+    })
+    .catch(function () {
+      if (!live.pricesLoaded) {
+        live.bnbPrice = 0;
+        live.usdtPrice = 1;
+        live.pricesLoaded = true;
+        renderBalances();
+      }
+    });
+}
+
+var logoCache = {};
+
+function loadLogo(coinId) {
+  if (logoCache[coinId]) {
+    applyLogo(coinId, logoCache[coinId]);
+    return;
+  }
+
+  fetch(COINGECKO + '/coins/' + coinId +
+        '?localization=false&tickers=false&market_data=false' +
+        '&community_data=false&developer_data=false')
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (d) {
+      var url = d && d.image
+        ? (d.image.large || d.image.small || d.image.thumb)
+        : '';
+      if (!url) return;
+      logoCache[coinId] = url;
+      applyLogo(coinId, url);
+    })
+    .catch(function () {});
+}
+
+function applyLogo(coinId, url) {
+  var nodes = document.querySelectorAll('[data-logo="' + coinId + '"]');
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i];
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = coinId;
+    img.loading = 'lazy';
+    img.onerror = function () {};
+    node.innerHTML = '';
+    node.appendChild(img);
+  }
+}
+
+/* ============================================================
+   RENDER — real balances × live prices
+   ============================================================ */
+function renderBalances() {
+  var bnbBal  = live.bnbBalance;
+  var usdtBal = live.usdtBalance;
+  var bnbPrice  = live.bnbPrice;
+  var usdtPrice = live.usdtPrice;
+
+  var bnbUsdValue  = bnbBal  === null ? null : bnbBal  * bnbPrice;
+  var usdtUsdValue = usdtBal === null ? null : usdtBal * usdtPrice;
+
+  /* When processing is done, the deposit is credited */
+  var creditDeposit = processingDone;
+
+  var totalConfirmed = null;
+  if (bnbBal !== null || usdtBal !== null || creditDeposit) {
+    totalConfirmed = (bnbUsdValue || 0) + (usdtUsdValue || 0);
+    if (creditDeposit) totalConfirmed += PENDING_USDT * (usdtPrice || 1);
+  }
+
+  var portTotal = el('portTotal');
+  if (portTotal) {
+    portTotal.textContent = totalConfirmed === null ? '—' : fmtUSD(totalConfirmed);
+  }
+
+  var meta = el('portMeta');
+  if (meta) {
+    meta.textContent = live.chainLoaded ? 'Live · on-chain' : 'Live · loading';
+  }
+
+  var pendingLabel = el('pendingLabel');
+  if (pendingLabel) {
+    pendingLabel.textContent = processingDone
+      ? fmtNum(PENDING_USDT, 2) + ' USDT credited'
+      : fmtNum(PENDING_USDT, 2) + ' USDT processing';
+  }
+
+  var bnbUsd = el('bnbUsd');
+  if (bnbUsd) bnbUsd.textContent = bnbUsdValue === null ? '—' : fmtUSD(bnbUsdValue);
+
+  var bnbSym = el('bnbSym');
+  if (bnbSym) {
+    if (bnbBal === null) {
+      bnbSym.textContent = 'loading on-chain…';
+    } else {
+      bnbSym.textContent = fmtNum(bnbBal, 6) + ' BNB · native';
+    }
+  }
+
+  var bnbChange = el('bnbChange');
+  if (bnbChange) {
+    if (!live.pricesLoaded) {
+      bnbChange.textContent = '—';
+      bnbChange.className = 'up';
+    } else {
+      var up = live.bnbChange >= 0;
+      bnbChange.className = up ? 'up' : 'down';
+      bnbChange.textContent = (up ? '+' : '') + live.bnbChange.toFixed(2) + '%';
+    }
+  }
+
+  /* --- USDT row --- */
+  var usdtVal = el('usdtVal');
+  if (usdtVal) {
+    if (usdtBal === null) {
+      usdtVal.textContent = '—';
+    } else if (processingDone) {
+      usdtVal.textContent = fmtNum(usdtBal + PENDING_USDT, 2) + ' USDT';
+    } else {
+      usdtVal.textContent = fmtNum(usdtBal, 2) + ' USDT';
+    }
+  }
+
+  var usdtUsd = el('usdtUsd');
+  if (usdtUsd) {
+    if (usdtBal === null) {
+      usdtUsd.textContent = 'loading…';
+    } else if (processingDone) {
+      usdtUsd.textContent = fmtUSD((usdtBal + PENDING_USDT) * (usdtPrice || 1));
+      usdtUsd.className = 'up';
+    } else {
+      usdtUsd.textContent = fmtUSD(usdtUsdValue);
+    }
+  }
+
+  var usdtSym = el('usdtSym');
+  if (usdtSym) {
+    usdtSym.textContent = usdtBal === null
+      ? 'loading on-chain…'
+      : (processingDone ? 'BEP-20 · deposit credited' : 'BEP-20 · on-chain');
+  }
+
+  var depositUsd = el('depositUsd');
+  if (depositUsd) {
+    var pendingUsd = PENDING_USDT * (live.usdtPrice || 1);
+    depositUsd.textContent = '≈ ' + fmtUSD(pendingUsd) + ' USD · live';
+  }
+}
+
+/* ============================================================
+   COUNTDOWN — 21h 45m, starts on page open, persists
+   ============================================================ */
+function getStart() {
+  var v = lsGet(PROCESS_KEY, null);
+  if (!v) {
+    v = String(Date.now());
+    lsSet(PROCESS_KEY, v);
+  }
+  return parseInt(v, 10) || Date.now();
+}
+
+function remaining() {
+  return Math.max(0, PROCESS_SEC - Math.floor((Date.now() - getStart()) / 1000));
+}
+
+function tick() {
+  var rem = remaining();
+  var done = PROCESS_SEC - rem;
+
+  var digits = el('procDigits');
+  if (digits) digits.textContent = fmtHMS(rem);
+
+  var pct = el('procPct');
+  if (pct) pct.textContent = Math.round((done / PROCESS_SEC) * 100) + '%';
+
+  var bar = el('procBar');
+  if (bar) bar.style.width = ((done / PROCESS_SEC) * 100).toFixed(2) + '%';
+
+  var ring = el('procRing');
+  if (ring) {
+    var C = 2 * Math.PI * 88;
+    ring.style.strokeDasharray = C;
+    ring.style.strokeDashoffset = (C * (1 - rem / PROCESS_SEC)).toFixed(2);
+  }
+
+  var serverProc = el('serverProc');
+  if (serverProc) serverProc.textContent = fmtHMS(rem);
+
+  var at = el('procAt');
+  if (at) {
+    var end = new Date(getStart() + PROCESS_SEC * 1000);
+    at.textContent = end.toLocaleString();
+  }
+
+  var status = el('procStatus');
+  if (status) status.textContent = rem > 0 ? 'Processing deposit…' : 'Processing complete';
+
+  var sStatus = el('serverStatus');
+  if (sStatus) {
+    if (rem > 0) {
+      sStatus.className = 'status-pill st-processing';
+      sStatus.textContent = 'Processing';
+    } else {
+      sStatus.className = 'status-pill st-success';
+      sStatus.textContent = 'Processed';
+    }
+  }
+
+  if (rem <= 0 && !processingDone) {
+    finishProcessing();
+  }
+}
+
+/* ============================================================
+   FINISH PROCESSING — deposit successful (no wipe)
+   ============================================================ */
+function finishProcessing() {
+  if (processingDone) return;
+  processingDone = true;
+
+  lsSet(DONE_KEY, '1');
+
+  /* --- Hero card --- */
+  var card = el('procCard');
+  if (card) card.classList.add('is-success');
+
+  var center = el('procCenter');
+  if (center) {
+    center.innerHTML = '<div class="proc-check">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.4L19 6.8"/></svg>' +
+      '</div>';
+  }
+
+  var ring = el('procRing');
+  if (ring) {
+    ring.style.strokeDashoffset = '0';
+    ring.classList.add('done');
+  }
+
+  var eyebrow = el('procEyebrow');
+  if (eyebrow) {
+    eyebrow.className = 'proc-eyebrow is-success';
+    eyebrow.innerHTML = 'Deposit successful';
+  }
+
+  var title = el('procTitle');
+  if (title) title.textContent = 'Deposit successful';
+
+  var desc = el('procDesc');
+  if (desc) {
+    desc.textContent = 'The 21-hour 45-minute processing window has completed. ' +
+      'Your 25,245.78 USDT deposit has been sent and credited to the wallet.';
+  }
+
+  var bar = el('procBar');
+  if (bar) { bar.style.width = '100%'; bar.classList.add('done'); }
+
+  var atLabel = el('procAtLabel');
+  if (atLabel) {
+    atLabel.innerHTML = 'Completed at <b class="done" id="procAt">' +
+      new Date().toLocaleString() + '</b>';
+  }
+
+  var status = el('procStatus');
+  if (status) { status.textContent = 'Deposit successful'; status.style.color = 'var(--green)'; }
+
+  var serverProc = el('serverProc');
+  if (serverProc) serverProc.textContent = 'Completed';
+
+  var retention = el('retention');
+  if (retention) retention.textContent = 'Deposit credited';
+
+  /* --- Deposit card --- */
+  var dCard = el('depositCard');
+  if (dCard) dCard.classList.add('is-success');
+
+  var dIcon = el('depositIcon');
+  if (dIcon) dIcon.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check-circle"/></svg>';
+
+  var dTitle = el('depositTitle');
+  if (dTitle) dTitle.textContent = 'Transaction deposit successful';
+
+  var dSub = el('depositSub');
+  if (dSub) dSub.textContent = 'Assets sent and credited to the wallet';
+
+  var dStatus = el('depositStatus');
+  if (dStatus) {
+    dStatus.className = 'status-pill st-success';
+    dStatus.textContent = 'Successful';
+  }
+
+  var strip = el('pendingStrip');
+  if (strip) strip.classList.add('is-success');
+  var stripIcon = el('pendingStripIcon');
+  if (stripIcon) stripIcon.innerHTML = '<use href="#i-check-circle"/>';
+  var stripText = el('pendingStripText');
+  if (stripText) {
+    stripText.innerHTML = '<b>Deposit confirmed.</b> The 25,245.78 USDT deposit ' +
+      'has been successfully sent and credited to your portfolio.';
+  }
+
+  var confirm = el('confirmCount');
+  if (confirm) { confirm.textContent = '128 / 128'; confirm.className = 'v green'; }
+
+  var gridStatus = el('depositGridStatus');
+  if (gridStatus) { gridStatus.textContent = 'Successful · credited'; gridStatus.className = 'v green'; }
+
+  /* --- Portfolio card --- */
+  var pTotalCard = el('portTotalCard');
+  if (pTotalCard) pTotalCard.classList.add('is-success');
+
+  var pendingChip = el('pendingChip');
+  if (pendingChip) {
+    pendingChip.className = 'chg';
+    pendingChip.innerHTML = '<svg class="ico" viewBox="0 0 24 24" style="width:13px;height:13px">' +
+      '<use href="#i-check"/></svg><span id="pendingLabel">25,245.78 USDT credited</span>';
+  }
+
+  var pendingChipSub = el('pendingChipSub');
+  if (pendingChipSub) pendingChipSub.textContent = 'Included in total balance';
+
+  var pNote = el('pendingNote');
+  if (pNote) pNote.classList.add('is-success');
+  var pNoteIcon = el('pendingNoteIcon');
+  if (pNoteIcon) pNoteIcon.innerHTML = '<use href="#i-check-circle"/>';
+  var pNoteText = el('pendingNoteText');
+  if (pNoteText) {
+    pNoteText.innerHTML = 'Deposit of <b>25,245.78 USDT</b> confirmed and credited to the portfolio';
+  }
+
+  var usdtLogo = el('usdtLogo');
+  if (usdtLogo) usdtLogo.classList.remove('dim');
+
+  var usdtVal = el('usdtVal');
+  if (usdtVal) usdtVal.className = '';
+  var usdtUsdEl = el('usdtUsd');
+  if (usdtUsdEl) usdtUsdEl.className = 'up';
+
+  /* --- Transaction list --- */
+  var txIcon = el('txDepositIcon');
+  if (txIcon) txIcon.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+  var txIconUse = el('txDepositIconUse');
+  if (txIconUse) txIconUse.setAttribute('href', '#i-check-circle');
+  var txTitle = el('txDepositTitle');
+  if (txTitle) txTitle.textContent = 'Deposit successful';
+  var txAmt = el('txDepositAmt');
+  if (txAmt) { txAmt.className = 'up'; txAmt.textContent = '+25,245.78'; }
+  var txSub = el('txDepositSub');
+  if (txSub) txSub.textContent = 'credited';
+
+  /* Re-render balances so total includes the deposit */
+  renderBalances();
+
+  toast('Deposit successful — assets sent');
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', function () {
+
+  var themeBtn = el('themeBtn');
+  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+  /* If already completed on a previous visit, show success immediately */
+  if (lsGet(DONE_KEY, '') === '1') {
+    processingDone = true;
+    getStart();          /* ensure start exists */
+    tick();              /* renders final state */
+    finishProcessing();
+  } else {
+    getStart();
+    tick();
+    ticker = setInterval(tick, 1000);
+  }
+
+  /* live prices + logos */
+  loadPrices();
+  loadLogo('binancecoin');
+  loadLogo('tether');
+
+  /* REAL on-chain balances */
+  loadOnChainBalances();
+
+  /* refresh every 60s */
+  priceTimer = setInterval(function () {
+    loadPrices();
+    loadOnChainBalances();
+  }, 60000);
+});
+</script>
+</body>
+</html>
